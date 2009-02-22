@@ -1,3 +1,4 @@
+require 'uri'
 require 'net/http'
 require 'rexml/document'
 module FeedBooks
@@ -120,7 +121,7 @@ module FeedBooks
 
 		def self.search(txt,limit=nil)
 			return [] if txt.strip.size==0
-			generic_iterate("/books/search.xml?query=#{txt}",limit)
+			generic_iterate("/books/search.xml?query=#{URI.escape(txt)}",limit)
 		end
 
 		def self.top(limit=nil)
@@ -223,7 +224,7 @@ module FeedBooks
 		
 		def self.search(txt,limit=nil)
 			return [] if txt.strip.size==0
-			generic_iterate("/authors/search.xml?query=#{txt}",limit)
+			generic_iterate("/authors/search.xml?query=#{URI.escape(txt)}",limit)
 		end
 
 		def self.top(limit=nil)
