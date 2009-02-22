@@ -7,7 +7,50 @@ module FeedBooks
 	USER_AGENT  = "%s %s" % [NAME, VERSION]
 
 
-	class Book
+	class FBobject
+		def from_xml(txt)
+				doc=REXML::Document.new resp.body
+				book=doc.root.elements["/*"]
+				return from_xml_elm(book)
+		end
+		protected 
+		def get_attr(name=nil)
+			name=self.class.to_s.downcase.split(':').last if name.nil?
+			book=nil
+			raise Exception("No Id given") if @id.nil? || @id < 1
+			Net::HTTP.start("www.feedbooks.com"){|http|
+				resp=http.get("/"+name+"s/search.xml?query=id:#{@id}")
+				doc=REXML::Document.new resp.body
+				book=doc.root.elements["//"+name+"[@id='#{@id}']"]
+			}
+			return from_xml_elm(book)
+		end
+
+
+		def from_xml_elm(book)
+			h=Hash.new
+			book.each_element do |el|
+				tmp=el.to_a
+				if tmp.size ==1 
+					tmp=el.text
+					tmp={"id"=>el.attributes['id'].to_i,el.name=> tmp} unless el.attributes['id'].nil?
+					if  h[el.name].nil?
+						h[el.name]=tmp
+					else
+						h[el.name]=[h[el.name], tmp].flatten
+					end
+				else
+					h[el.name]=Hash.new
+					el.each_element do |elc|
+						h[el.name][elc.name]=elc.text
+					end
+				end
+			end
+			return h
+		end
+	end
+
+	class Book < FBobject
 		attr_reader :id
 		def initialize(id=nil)
 			@id=id
@@ -55,32 +98,7 @@ module FeedBooks
 
 		private 
 		def get_attr
-			book=nil
-			raise Exception("No Id given") if @id.nil? || @id < 1
-			Net::HTTP.start("www.feedbooks.com"){|http|
-				resp=http.get("/books/search.xml?query=id:#{@id}")
-				doc=REXML::Document.new resp.body
-				book=doc.root.elements["//book[@id='#{@id}']"]
-			}
-			h=Hash.new
-			book.each_element do |el|
-				tmp=el.to_a
-				if tmp.size ==1 
-					tmp=el.text
-					tmp={"id"=>el.attributes['id'].to_i,el.name=> tmp} unless el.attributes['id'].nil?
-					if  h[el.name].nil?
-						h[el.name]=tmp
-					else
-						h[el.name]=[h[el.name], tmp].flatten
-					end
-				else
-					h[el.name]=Hash.new
-					el.each_element do |elc|
-						h[el.name][elc.name]=elc.text
-					end
-				end
-			end
-
+			h=super
 			h.each do |k,v|
 				if k!="author"
 					self.instance_variable_set('@'+k,v)
@@ -93,7 +111,7 @@ module FeedBooks
 	end
 
 
-	class Author
+	class Author < FBobject
 		attr_reader :id
 
 		def initialize(id=nil)
@@ -155,32 +173,7 @@ module FeedBooks
 			@id=i
 		end
 		def get_attr
-			book=nil
-			raise Exception("No Id given") if @id.nil? || @id < 1
-			Net::HTTP.start("www.feedbooks.com"){|http|
-				resp=http.get("/authors/search.xml?query=id:#{@id}")
-				doc=REXML::Document.new resp.body
-				book=doc.root.elements["//author[@id='#{@id}']"]
-			}
-			h=Hash.new
-			book.each_element do |el|
-				tmp=el.to_a
-				if tmp.size ==1 
-					tmp=el.text
-					tmp={"id"=>el.attributes['id'].to_i,el.name=> tmp} unless el.attributes['id'].nil?
-					if  h[el.name].nil?
-						h[el.name]=tmp
-					else
-						h[el.name]=[h[el.name], tmp].flatten
-					end
-				else
-					h[el.name]=Hash.new
-					el.each_element do |elc|
-						h[el.name][elc.name]=elc.text
-					end
-				end
-			end
-
+			h=super
 			h.each do |k,v|
 				if k=='name'
 					send('fullname=',v)
