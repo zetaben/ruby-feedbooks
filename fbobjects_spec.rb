@@ -57,6 +57,26 @@ describe FeedBooks::Book do
 	it "should have a description" do
 		@book.should respond_to('description')
 	end
+	it "should be able to get similar books" do
+		@book.should respond_to('similar')
+		@book.similar(10).size.should ==10
+	end
+	
+	it "should be able to search" do
+		FeedBooks::Book.should respond_to('search')
+	end
+
+	it "should be able to get top books" do
+		FeedBooks::Book.should respond_to('top')
+		FeedBooks::Book.top(10).size.should ==10
+	end
+	
+	it "should be able to get recent books" do
+		FeedBooks::Book.should respond_to('recent')
+		FeedBooks::Book.recent(10).size.should ==10
+	end
+	
+
 
 end
 
@@ -108,5 +128,33 @@ describe FeedBooks::Author do
 	
 	it "should have a biography" do
 		@author.should respond_to('biography')
+	end
+	
+	it "should be able to search" do
+		FeedBooks::Author.should respond_to('search')
+	end
+
+	it "should be able to get top" do
+		FeedBooks::Author.should respond_to('top')
+		FeedBooks::Author.top(10).size.should ==10
+	end
+	
+	it "should be able to get recent" do
+		FeedBooks::Author.should respond_to('recent')
+		FeedBooks::Author.recent(10).size.should ==10
+	end
+	
+	it "should be able to get books" do
+		@author.should respond_to('books')
+	end
+
+	it "should be able to get top books" do
+		@author.should respond_to('top_books')
+		@author.top_books(10).size.should ==10
+	end
+	
+	it "should be able to get recent books" do
+		@author.should respond_to('recent_books')
+		@author.recent_books(10).size.should ==10
 	end
 end

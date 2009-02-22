@@ -8,10 +8,10 @@ module FeedBooks
 
 
 	class FBobject
-		def from_xml(txt)
-				doc=REXML::Document.new resp.body
-				book=doc.root.elements["/*"]
-				return from_xml_elm(book)
+		def self.from_xml(txt)
+			doc=REXML::Document.new resp.body
+			book=doc.root.elements["/*"]
+			return from_xml_elm(book)
 		end
 		protected 
 		def get_attr(name=nil)
@@ -23,11 +23,11 @@ module FeedBooks
 				doc=REXML::Document.new resp.body
 				book=doc.root.elements["//"+name+"[@id='#{@id}']"]
 			}
-			return from_xml_elm(book)
+			return FBobject::from_xml_elm(book)
 		end
 
 
-		def from_xml_elm(book)
+		def self.from_xml_elm(book)
 			h=Hash.new
 			book.each_element do |el|
 				tmp=el.to_a
@@ -47,6 +47,24 @@ module FeedBooks
 				end
 			end
 			return h
+		end
+
+		def self.iterate(url)
+			url+='?' if url.index('?').nil?
+			name=self.to_s.downcase.split(':').last
+			page=1
+			maxpages=0
+			begin
+				Net::HTTP.start("www.feedbooks.com"){|http|
+					resp=http.get(url+"&page=#{page}")
+					doc=REXML::Document.new resp.body
+					maxpages=doc.root.attributes['total'].to_i
+					book=doc.root.elements.each("//"+name) do |b|
+						yield(b)
+					end
+				}
+				page+=1
+			end while page<=maxpages
 		end
 	end
 
@@ -96,9 +114,39 @@ module FeedBooks
 			@description
 		end 
 
+		def similar(limit=nil)
+			self.class.generic_iterate("/book/#{@id}/similar.xml",limit)
+		end
+
+		def self.search(txt,limit=nil)
+			return [] if txt.strip.size==0
+			generic_iterate("/books/search.xml?query=#{txt}",limit)
+		end
+
+		def self.top(limit=nil)
+			generic_iterate("/books/top.xml",limit)
+		end
+
+		def self.recent(limit=nil)
+			generic_iterate("/books/recent.xml",limit)
+		end
+
 		private 
-		def get_attr
-			h=super
+
+		def self.generic_iterate(url,limit=nil)
+			res=[]
+			self.iterate(url) do |b|
+				tmp=Book.new
+				tmp.send('from_h',Book::from_xml_elm(b))
+				tmp.instance_variable_set('@id',b.attributes['id'].to_i)
+				res.push(tmp)
+				return res[0...limit] if !limit.nil? && res.size >= limit
+
+			end
+			res
+		end
+
+		def from_h(h)
 			h.each do |k,v|
 				if k!="author"
 					self.instance_variable_set('@'+k,v)
@@ -107,6 +155,10 @@ module FeedBooks
 					self.instance_variable_set('@'+k,v.collect{|a| FeedBooks::Author.from_h(a)})
 				end
 			end
+		end
+
+		def get_attr
+			from_h(super)
 		end
 	end
 
@@ -168,12 +220,56 @@ module FeedBooks
 			r.fullname=h['author']
 			r
 		end
+		
+		def self.search(txt,limit=nil)
+			return [] if txt.strip.size==0
+			generic_iterate("/authors/search.xml?query=#{txt}",limit)
+		end
+
+		def self.top(limit=nil)
+			generic_iterate("/authors/top.xml",limit)
+		end
+
+		def self.recent(limit=nil)
+			generic_iterate("/authors/recent.xml",limit)
+		end
+		
+		def books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books.xml",limit)
+		end
+
+		def top_books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books/top.xml",limit)
+		end
+		
+		def recent_books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books/recent.xml",limit)
+		end
+		
 		private 
+
 		def id=(i)
 			@id=i
 		end
+		
+		def self.generic_iterate(url,limit=nil)
+			res=[]
+			self.iterate(url) do |b|
+				tmp=Author.new
+				tmp.send('from_h_priv',Author::from_xml_elm(b))
+				tmp.instance_variable_set('@id',b.attributes['id'].to_i)
+				res.push(tmp)
+				return res[0...limit] if !limit.nil? && res.size >= limit
+
+			end
+			res
+		end
+		
 		def get_attr
-			h=super
+			from_h_priv(super)
+		end
+
+		def from_h_priv(h)
 			h.each do |k,v|
 				if k=='name'
 					send('fullname=',v)
