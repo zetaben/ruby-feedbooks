@@ -1,6 +1,5 @@
-require 'uri'
-require 'net/http'
-require 'rexml/document'
+require 'open-uri'
+require 'hpricot'
 module FeedBooks
 
 	NAME        = 'Ruby/FeedBooks'
@@ -10,8 +9,8 @@ module FeedBooks
 
 	class FBobject
 		def self.from_xml(txt)
-			doc=REXML::Document.new resp.body
-			book=doc.root.elements["/*"]
+			doc=Hpricot.XML(txt)
+			book=doc/"/*"
 			return from_xml_elm(book)
 		end
 		protected 
@@ -19,31 +18,30 @@ module FeedBooks
 			name=self.class.to_s.downcase.split(':').last if name.nil?
 			book=nil
 			raise Exception("No Id given") if @id.nil? || @id < 1
-			Net::HTTP.start("www.feedbooks.com"){|http|
-				resp=http.get("/"+name+"s/search.xml?query=id:#{@id}")
-				doc=REXML::Document.new resp.body
-				book=doc.root.elements["//"+name+"[@id='#{@id}']"]
-			}
+			doc = Hpricot.XML(open("http://www.feedbooks.com/"+name+"s/search.xml?query=id:#{@id}"))
+			book=doc/("//"+name+"[@id='#{@id}']")
 			return FBobject::from_xml_elm(book)
 		end
 
 
 		def self.from_xml_elm(book)
 			h=Hash.new
-			book.each_element do |el|
-				tmp=el.to_a
-				if tmp.size ==1 
-					tmp=el.text
-					tmp={"id"=>el.attributes['id'].to_i,el.name=> tmp} unless el.attributes['id'].nil?
-					if  h[el.name].nil?
-						h[el.name]=tmp
+			(book.at('.').containers).each do |el|
+				 tmp=el.containers
+				name=el.name
+				name=name.split(':').last if name.include?(':')
+				if tmp.empty?
+					tmp=el.inner_text
+					tmp={"id"=>el.attributes['id'].to_i,name=> tmp} unless el.attributes['id'].nil?
+					if  h[name].nil?
+						h[name]=tmp
 					else
-						h[el.name]=[h[el.name], tmp].flatten
+						h[name]=[h[name], tmp].flatten
 					end
 				else
-					h[el.name]=Hash.new
-					el.each_element do |elc|
-						h[el.name][elc.name]=elc.text
+					h[name]=Hash.new
+					tmp.each do |elc|
+						h[name][elc.name.split(':').last]=elc.inner_text
 					end
 				end
 			end
@@ -56,14 +54,11 @@ module FeedBooks
 			page=1
 			maxpages=0
 			begin
-				Net::HTTP.start("www.feedbooks.com"){|http|
-					resp=http.get(url+"&page=#{page}")
-					doc=REXML::Document.new resp.body
-					maxpages=doc.root.attributes['total'].to_i
-					book=doc.root.elements.each("//"+name) do |b|
-						yield(b)
-					end
-				}
+				doc=Hpricot.XML(open("http://www.feedbooks.com#{url}&page=#{page}"))
+				maxpages=doc.root.attributes['total'].to_i
+				book=doc.search("//"+name) do |b|
+					yield(b)
+				end
 				page+=1
 			end while page<=maxpages
 		end
