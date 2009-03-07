@@ -1,24 +1,85 @@
 require 'open-uri'
 require 'hpricot'
+require 'digest/md5'
 module FeedBooks
 
 	NAME        = 'Ruby/FeedBooks'
 	VERSION     = '0.1'
 	USER_AGENT  = "%s %s" % [NAME, VERSION]
 
+	class Connection
+		attr_accessor :password
+		attr_accessor :user
+		attr_writer :proxy
+
+		def initialize(user=nil,pass=nil)
+			@user=user
+			@password=pass
+		end
+
+		def proxy
+			return @proxy unless @proxy.nil?
+			ENV["proxy"]
+		end
+
+		def openfb(url)
+			return open(url,"r",http_opts)
+		end
+
+		def http_opts
+			ret={}
+			ret[:http_basic_authentication]=[user,Digest::MD5.hexdigest(password)] unless user.nil?
+			ret[:proxy]=proxy
+			ret["User-Agent"]=USER_AGENT
+			return ret
+		end
+
+
+	end
+
+
 
 	class FBobject
+		@@connection = Connection.new
+	
+		def self.connection=(con)
+			@@connection=con
+			@@connection=Connection.new if @@connection.nil?
+		end
+
+		def self.connection
+			@@connection
+		end
+
+		def connection=(con)
+			@@connection=con
+			@@connection=Connection.new if @@connection.nil?
+		end
+
+		def connection
+			@@connection
+		end
+
 		def self.from_xml(txt)
 			doc=Hpricot.XML(txt)
 			book=doc/"/*"
 			return from_xml_elm(book)
 		end
 		protected 
+		
+		def openfb(url)
+			return @@connection.openfb(url)
+		end
+		
+		def self.openfb(url)
+			return @@connection.openfb(url)
+		end
+		
 		def get_attr(name=nil)
 			name=self.class.to_s.downcase.split(':').last if name.nil?
 			book=nil
 			raise Exception("No Id given") if @id.nil? || @id < 1
-			doc = Hpricot.XML(open("http://www.feedbooks.com/"+name+"s/search.xml?query=id:#{@id}"))
+			doc = Hpricot.XML(openfb("http://www.feedbooks.com/"+name+"s/search.xml?query=id:#{@id}"))
 			book=doc/("//"+name+"[@id='#{@id}']")
 			return FBobject::from_xml_elm(book)
 		end
@@ -27,7 +88,7 @@ module FeedBooks
 		def self.from_xml_elm(book)
 			h=Hash.new
 			(book.at('.').containers).each do |el|
-				 tmp=el.containers
+				tmp=el.containers
 				name=el.name
 				name=name.split(':').last if name.include?(':')
 				if tmp.empty?
@@ -54,7 +115,7 @@ module FeedBooks
 			page=1
 			maxpages=0
 			begin
-				doc=Hpricot.XML(open("http://www.feedbooks.com#{url}&page=#{page}"))
+				doc=Hpricot.XML(openfb("http://www.feedbooks.com#{url}&page=#{page}"))
 				maxpages=doc.root.attributes['total'].to_i
 				book=doc.search("//"+name) do |b|
 					yield(b)
@@ -125,6 +186,10 @@ module FeedBooks
 
 		def self.recent(limit=nil)
 			generic_iterate("/books/recent.xml",limit)
+		end
+		
+		def self.recommended(limit=nil)
+			generic_iterate("/recommendations.xml",limit)
 		end
 
 		private 
@@ -216,7 +281,7 @@ module FeedBooks
 			r.fullname=h['author']
 			r
 		end
-		
+
 		def self.search(txt,limit=nil)
 			return [] if txt.strip.size==0
 			generic_iterate("/authors/search.xml?query=#{URI.escape(txt)}",limit)
@@ -229,7 +294,7 @@ module FeedBooks
 		def self.recent(limit=nil)
 			generic_iterate("/authors/recent.xml",limit)
 		end
-		
+
 		def books(limit=nil)
 			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books.xml",limit)
 		end
@@ -237,17 +302,17 @@ module FeedBooks
 		def top_books(limit=nil)
 			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books/top.xml",limit)
 		end
-		
+
 		def recent_books(limit=nil)
 			FeedBooks::Book.send('generic_iterate',"/author/#{@id}/books/recent.xml",limit)
 		end
-		
+
 		private 
 
 		def id=(i)
 			@id=i
 		end
-		
+
 		def self.generic_iterate(url,limit=nil)
 			res=[]
 			self.iterate(url) do |b|
@@ -260,7 +325,7 @@ module FeedBooks
 			end
 			res
 		end
-		
+
 		def get_attr
 			from_h_priv(super)
 		end

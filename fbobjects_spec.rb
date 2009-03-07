@@ -80,6 +80,65 @@ describe FeedBooks::Book do
 
 end
 
+describe FeedBooks::Connection do
+
+	before(:each) do
+		@con=FeedBooks::Connection.new()
+	end
+
+	it "should have a  nil user when new" do 
+		@con.user.should be_nil
+	end
+	
+	it "should have a  nil password when new" do
+		@con.password.should be_nil
+	end
+
+	it "should have the env proxy  when new" do 
+		@con.proxy.should == ENV["proxy"]
+	end
+	
+	it "should have a option hash" do 
+		@con.should respond_to(:http_opts)
+		@con.http_opts.should_not be_nil
+	end
+
+	it "should have :http_basic_authentication set given a user" do
+		@con.user="test"
+		@con.password="test"
+		a=@con.http_opts[:http_basic_authentication]
+		a.first.should =="test"
+		a.last.should ==Digest::MD5.hexdigest("test")
+	end
+
+	it "should have a User-agent" do 
+		@con.http_opts["User-Agent"].should == FeedBooks::USER_AGENT
+	end
+	
+
+end
+
+
+describe "Book (authenticated_user)" do 
+	before(:each) do 
+		@book=FeedBooks::Book.new(1)
+		FeedBooks::Book.connection=FeedBooks::Connection.new("test","test")
+	end
+	
+	it "should respond to recommended" do 
+		FeedBooks::Book.should respond_to(:recommended)
+	end
+
+	it "should get recommendations" do 
+		FeedBooks::Book.connection=FeedBooks::Connection.new("test","test")
+		FeedBooks::Book.recommended.should have_at_least(1).item
+	end
+
+	after(:each) do
+		FeedBooks::Book.connection=nil
+	end
+
+end
 
 describe FeedBooks::Author do 
 	before(:each) do 
