@@ -7,6 +7,18 @@ module FeedBooks
 	VERSION     = '0.1'
 	USER_AGENT  = "%s %s" % [NAME, VERSION]
 
+	class FeedBooks::UnauthenticatedError < StandardError
+		 def initialize(m=nil)
+			       super(m.nil? ? "You are not connected (no user/password)": m)
+		 end	           
+	end
+	
+	class FeedBooks::WrongCredentialsError < FeedBooks::UnauthenticatedError
+		 def initialize()
+			       super("User / password mismatched")
+		 end	           
+	end
+
 	class Connection
 		attr_accessor :password
 		attr_accessor :user
@@ -23,7 +35,14 @@ module FeedBooks
 		end
 
 		def openfb(url)
+			begin
 			return open(url,"r",http_opts)
+			rescue OpenURI::HTTPError => e 
+				if e.io.status.first.to_i == 401
+					raise (user.nil? ? FeedBooks::UnauthenticatedError.new  : FeedBooks::WrongCredentialsError.new )
+				end
+				raise e
+			end
 		end
 
 		def http_opts
@@ -169,7 +188,12 @@ module FeedBooks
 		def description
 			get_attr if @title==nil	
 			@description
-		end 
+		end
+
+		def subjects
+			get_attr if @title==nil
+			@subject.collect{|s| FeedBooks::Type.new(s)}
+		end
 
 		def similar(limit=nil)
 			self.class.generic_iterate("/book/#{@id}/similar.xml",limit)
@@ -190,6 +214,10 @@ module FeedBooks
 		
 		def self.recommended(limit=nil)
 			generic_iterate("/recommendations.xml",limit)
+		end
+		
+		def lists(limit=nil)
+			FeedBooks::List.send('generic_iterate',"/book/#{@id}/lists.xml",limit)
 		end
 
 		private 
@@ -339,5 +367,130 @@ module FeedBooks
 				end
 			end
 		end
+	end
+
+	class Type < FBobject
+		attr_reader :name
+
+		def initialize(name=nil)
+			@name=name
+		end
+
+		def total_books
+			get_attr if @total_books.nil?
+			@total_books.to_i
+		end
+
+		def self.all(lim=nil)
+			generic_iterate('/types.xml',lim)
+		end
+
+		def books(limit=nil) 
+			
+			FeedBooks::Book.send('generic_iterate',"/type/#{@name}/books.xml",limit)
+		end
+		
+		def top_books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/type/#{@name}/books/top.xml",limit)
+		end
+
+		def recent_books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/type/#{@name}/books/recent.xml",limit)
+		end
+
+		private
+		
+		def self.generic_iterate(url,limit=nil)
+			res=[]
+			self.iterate(url) do |b|
+				tmp=Type.new
+				tmp.send('from_h',Type::from_xml_elm(b))
+				tmp.instance_variable_set('@id',b.attributes['id'].to_i)
+				res.push(tmp)
+				return res[0...limit] if !limit.nil? && res.size >= limit
+
+			end
+			res
+		end
+		
+		def from_h(h)
+			h.each do |k,v|
+				self.instance_variable_set('@'+k,v)
+			end
+		end
+
+		def get_attr
+			@total_books=Type.all.find{|t| t.name==@name}.total_books
+		end
+
+	end
+
+	class List < FBobject
+		attr_reader :id
+		def initialize(id=nil)
+			@id=id
+		end
+
+		def title
+			get_attr if @title==nil	
+			@title
+		end 
+		
+		def identifier
+			get_attr if @title==nil	
+			@identifier
+		end 
+		
+		def description
+			get_attr if @title==nil	
+			@description
+		end 
+		
+		def favorites
+			get_attr if @title==nil	
+			@favorites.to_i
+		end 
+		
+		def items
+			get_attr if @title==nil	
+			@items.to_i
+		end 
+		
+		def books(limit=nil)
+			FeedBooks::Book.send('generic_iterate',"/list/#{@id}.xml",limit)
+		end
+
+		def self.all(lim=nil)
+			generic_iterate('/lists.xml',lim)
+		end
+		
+		private 
+
+		def self.generic_iterate(url,limit=nil)
+			res=[]
+			self.iterate(url) do |b|
+				tmp=List.new
+				tmp.send('from_h',List::from_xml_elm(b))
+				tmp.instance_variable_set('@id',b.attributes['id'].to_i)
+				res.push(tmp)
+				return res[0...limit] if !limit.nil? && res.size >= limit
+
+			end
+			res
+		end
+
+		def from_h(h)
+			h.each do |k,v|
+					self.instance_variable_set('@'+k,v)
+			end
+		end
+
+		def get_attr
+			List::iterate('/lists.xml') do  |l|
+				next unless l.attributes['id'].to_i==@id
+				return from_h(List::from_xml_elm(l))
+			end
+		end
+		
 	end
 end
