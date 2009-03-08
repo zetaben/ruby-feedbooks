@@ -309,4 +309,8 @@ describe FeedBooks::List do
 		@list.should respond_to(:books)
 		@list.should have(@list.items).books
 	end
+	
+	it do
+		@list.should respond_to(:each)
+	end
 end
