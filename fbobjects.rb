@@ -1,7 +1,7 @@
 # Access Library to FeedBooks API
 # More information at : http://www.feedbooks.com/api
 #
-# Author:: Benoit Larroque ( firtname dot surname at feedbooks.com)
+# Author:: Benoit Larroque ( firstname dot surname at feedbooks.com)
 # Copyright:: Feedbooks.com
 # Licence:: Public Domain
 
@@ -95,6 +95,7 @@ module FeedBooks
 		end
 
 		#connection getter
+		#should be a Connection
 		def self.connection
 			@@connection
 		end
@@ -177,7 +178,7 @@ module FeedBooks
 	end
 
 	#Book api object
-	# see http://feedbooks.com/api/books
+	#see http://feedbooks.com/api/books
 	class Book < FBobject
 		attr_reader :id
 		def initialize(id=nil)
@@ -227,13 +228,14 @@ module FeedBooks
 			@description
 		end
 		
-		alias :types :subjects
 
 		#subjects is an array of Type elements
 		def subjects
 			get_attr if @title==nil
 			@subject.collect{|s| FeedBooks::Type.new(s)}
 		end
+		
+		alias :types :subjects
 
 		#get similar books
 		def similar(limit=nil)
@@ -430,6 +432,7 @@ module FeedBooks
 	#see http://feedbooks.com/api/types
 	class Type < FBobject
 		attr_reader :name
+		attr_reader :total_books
 
 		def initialize(name=nil)
 			@name=name
