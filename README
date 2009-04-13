@@ -1,0 +1,24 @@
+Feedbooks.com ruby access library
+=================================
+
+A dead simple library to access feedbooks.com endpoints. It should be really easy
+to use :
+
+* for public access point :
+require 'ruby-feedbooks'
+include FeedBooks
+
+book=Book.new(1)
+puts book.title
+puts book.similar(10).inspect
+
+* for private access point first set your user/pass :
+
+FeedBooks::Book.connection=FeedBooks::Connection.new("user","pass")
+puts FeedBooks::Book.recommended.inspect
+
+References
+=========
+
+http://feedbooks.com/api
+http://www.slideshare.net/zeta/the-new-feedbooks-api

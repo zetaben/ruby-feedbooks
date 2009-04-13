@@ -1,4 +1,4 @@
-require 'fbobjects'
+require 'lib/ruby-feedbooks.rb'
 
 describe FeedBooks::Book do 
 	before(:each) do 
