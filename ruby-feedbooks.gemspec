@@ -1,6 +1,7 @@
 Gem::Specification.new do |s|
 	s.name = %q{ruby-feedbooks}
-	s.version =  File.read('lib/ruby-feedbooks.rb').grep(/VERSION\s*=/).first.split('=').last.gsub(/[^0-9\.]/,'')
+#	s.version =  File.read('lib/ruby-feedbooks.rb').grep(/VERSION\s*=/).first.split('=').last.gsub(/[^0-9\.]/,'')
+	s.version = '0.1'
 	s.date = %q{2009-04-13}
 	s.authors = ["Benoit Larroque"]
 	s.email = "zeta dot ben at gmail dot com"
