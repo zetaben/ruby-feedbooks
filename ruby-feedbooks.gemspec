@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
 	s.authors = ["Benoit Larroque"]
 	s.email = "zeta dot ben at gmail dot com"
 	s.summary = %q{ruby-feedbooks is a dead simple ruby interface to feedbooks.com}
-	s.homepage = %q{http://github.com/ruby-feedbooks}
+	s.homepage = %q{http://github.com/zentaben/ruby-feedbooks}
 	s.description = %q{ruby-feedbooks is a dead simple ruby interface to feedbooks.com}
 	s.files = [ "README", "Rakefile", "lib/ruby-feedbooks.rb", "spec/ruby-feedbooks_spec.rb"]
 	s.has_rdoc = true
